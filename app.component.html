@@ -1,0 +1,189 @@
+<div class="min-h-screen bg-gray-900 text-gray-100 flex flex-col items-center p-4 sm:p-6 lg:p-8">
+  <div class="w-full max-w-4xl">
+    <!-- Header -->
+    <header class="text-center mb-8">
+      <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-500">
+        AI Image Generator
+      </h1>
+      <p class="text-gray-400 mt-2">Bring your imagination to life with Gemini</p>
+    </header>
+
+    <!-- Generator Form -->
+    <div class="bg-gray-800/50 rounded-2xl p-6 shadow-2xl backdrop-blur-sm border border-gray-700/50">
+      <div class="flex flex-col gap-6">
+
+        <!-- Image Upload -->
+        <div>
+          <label class="text-lg font-medium text-gray-300 mb-2 block">Upload an image (optional)</label>
+          <div
+            class="relative w-full h-40 bg-gray-900 border-2 border-dashed border-gray-700 rounded-lg flex items-center justify-center cursor-pointer hover:border-indigo-500 transition-colors duration-200"
+            (click)="fileInput.click()"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+            [class.border-indigo-500]="isDragging()"
+          >
+            <input #fileInput type="file" class="hidden" accept="image/png, image/jpeg, image/webp" (change)="onFileSelected($event)">
+
+            @if (uploadedImage()) {
+              <div class="relative w-full h-full">
+                <img [src]="uploadedImage()" alt="Uploaded preview" class="w-full h-full object-contain rounded-lg p-2">
+                <button (click)="removeImage($event)" class="absolute top-2 right-2 bg-gray-900/70 text-white rounded-full p-1.5 hover:bg-gray-800 transition-colors z-10" aria-label="Remove image">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            } @else {
+              <div class="text-center text-gray-500 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-10 w-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <p>Click or drag & drop an image</p>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div>
+          <label for="prompt" class="text-lg font-medium text-gray-300">Enter your prompt</label>
+          <textarea
+            id="prompt"
+            [value]="prompt()"
+            (input)="updatePrompt($event)"
+            placeholder="e.g., A futuristic city at night with flying cars, neon lights, detailed, 8k"
+            class="w-full h-28 p-4 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="text-lg font-medium text-gray-300 mb-2 block">Aspect Ratio</label>
+          <div class="flex flex-wrap gap-2">
+            @for (ratio of aspectRatios; track ratio.value) {
+              <button
+                (click)="selectedAspectRatio.set(ratio.value)"
+                [class]="'px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 ' + (selectedAspectRatio() === ratio.value ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-700 hover:bg-gray-600/70 text-gray-300')"
+              >
+                {{ ratio.label }} ({{ ratio.value }})
+              </button>
+            }
+          </div>
+        </div>
+
+        <button
+          (click)="generateImage()"
+          [disabled]="isLoading() || !prompt().trim()"
+          class="w-full mt-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 disabled:transform-none flex items-center justify-center gap-2"
+        >
+          @if (isLoading()) {
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Generating...</span>
+          } @else {
+            <span>Generate Image</span>
+          }
+        </button>
+      </div>
+    </div>
+
+    <!-- Image Display Area -->
+    <div class="mt-8 w-full min-h-[400px] flex items-center justify-center bg-gray-800/50 rounded-2xl p-6 shadow-2xl backdrop-blur-sm border border-gray-700/50">
+      @if (isLoading()) {
+        <div class="text-center text-gray-400">
+          <svg class="animate-spin mx-auto h-12 w-12 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="mt-4 text-lg">Your masterpiece is being created...</p>
+        </div>
+      } @else if (error()) {
+        <div class="text-center text-red-400 bg-red-900/20 p-4 rounded-lg">
+          <h3 class="font-bold text-lg">Generation Failed</h3>
+          <p class="text-sm">{{ error() }}</p>
+        </div>
+      } @else if (generatedImage()) {
+        <div class="flex flex-col items-center gap-4">
+          <img [src]="generatedImage()" alt="AI Generated Image" class="rounded-lg shadow-lg max-w-full max-h-[60vh] object-contain" />
+          <div class="flex gap-4">
+             <a [href]="generatedImage()" download="ai-generated-image.jpg" class="inline-block mt-4 bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition-colors duration-200">
+              Download Image
+            </a>
+            <button (click)="openEditModal()" class="inline-block mt-4 bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors duration-200">
+              Edit
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="text-center text-gray-500">
+          <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <p class="mt-4 text-lg">Your generated image will appear here.</p>
+        </div>
+      }
+    </div>
+
+  </div>
+</div>
+
+<!-- Editing Modal -->
+@if (isEditing()) {
+  <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+    <div class="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col p-6 border border-gray-700">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-700">
+        <h2 class="text-2xl font-bold text-gray-100">Edit Image</h2>
+        <button (click)="cancelEditing()" class="text-gray-400 hover:text-white transition-colors">
+           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      
+      <!-- Editor Content -->
+      <div class="flex-grow flex flex-col md:flex-row gap-6 overflow-hidden">
+        <!-- Image Preview Area -->
+        <div class="w-full md:w-2/3 h-full bg-gray-900 rounded-lg flex items-center justify-center overflow-hidden">
+          <div class="max-w-full max-h-full" [style.filter]="filterStyle()">
+             <img #editImage [src]="originalImage()" alt="Image to edit" class="block max-w-full max-h-full opacity-0" [class.opacity-100]="originalImage()" />
+          </div>
+        </div>
+        
+        <!-- Controls Area -->
+        <div class="w-full md:w-1/3 flex flex-col gap-4 overflow-y-auto pr-2">
+          <h3 class="text-lg font-semibold text-gray-200">Filters</h3>
+          <!-- Sliders -->
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 items-center">
+              <label for="brightness" class="text-sm text-gray-400">Brightness</label>
+              <input id="brightness" type="range" min="0" max="200" [value]="brightness()" (input)="brightness.set($any($event.target).value)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+             <div class="grid grid-cols-2 items-center">
+              <label for="contrast" class="text-sm text-gray-400">Contrast</label>
+              <input id="contrast" type="range" min="0" max="200" [value]="contrast()" (input)="contrast.set($any($event.target).value)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+             <div class="grid grid-cols-2 items-center">
+              <label for="saturate" class="text-sm text-gray-400">Saturation</label>
+              <input id="saturate" type="range" min="0" max="200" [value]="saturate()" (input)="saturate.set($any($event.target).value)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+          </div>
+
+          <h3 class="text-lg font-semibold text-gray-200 mt-4">Effects</h3>
+          <div class="grid grid-cols-2 gap-2">
+             <button (click)="grayscale.set(grayscale() === 0 ? 100 : 0)" [class]="'w-full py-2 rounded-lg text-sm font-semibold transition-colors ' + (grayscale() > 0 ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600')">Grayscale</button>
+             <button (click)="sepia.set(sepia() === 0 ? 100 : 0)" [class]="'w-full py-2 rounded-lg text-sm font-semibold transition-colors ' + (sepia() > 0 ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600')">Sepia</button>
+             <button (click)="invert.set(invert() === 0 ? 100 : 0)" [class]="'w-full py-2 rounded-lg text-sm font-semibold transition-colors ' + (invert() > 0 ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600')">Invert</button>
+          </div>
+
+          <button (click)="resetFilters()" class="w-full mt-auto bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Reset Filters</button>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div class="mt-6 flex justify-end gap-4 pt-4 border-t border-gray-700">
+        <button (click)="cancelEditing()" class="bg-gray-700 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 transition-colors">Cancel</button>
+        <button (click)="saveChanges()" class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all">Save Changes</button>
+      </div>
+    </div>
+  </div>
+}
